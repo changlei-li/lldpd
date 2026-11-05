@@ -1926,6 +1926,10 @@ agent_init(struct lldpd *cfg, const char *agentx)
 	init_agent("lldpAgent");
 	REGISTER_MIB("lldp", agent_lldp_vars, variable8, lldp_oid);
 	init_snmp("lldpAgent");
+	/* The first connection attempt has been made and reported. Do not
+	 * repeat the warning each time NetSNMP retries to connect. */
+	netsnmp_ds_set_boolean(NETSNMP_DS_APPLICATION_ID,
+	    NETSNMP_DS_AGENT_NO_CONNECTION_WARNINGS, TRUE);
 
 	log_debug("snmp", "register to sysORTable");
 	if ((rc = register_sysORTable(lldp_oid, OID_LENGTH(lldp_oid),

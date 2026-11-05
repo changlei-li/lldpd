@@ -330,6 +330,7 @@ asroot_snmp_socket()
 {
 	int sock, rc;
 	static struct sockaddr_un *addr = NULL;
+	static int connect_failed = 0;
 	struct sockaddr_un bogus;
 
 	if (!addr) {
@@ -357,8 +358,15 @@ asroot_snmp_socket()
 	}
 	if ((rc = connect(sock, (struct sockaddr *)addr, sizeof(struct sockaddr_un))) !=
 	    0) {
-		log_info("privsep", "cannot connect to %s: %s", addr->sun_path,
-		    strerror(errno));
+		/* Only report the first failure until a connection succeeds:
+		 * the subagent retries periodically. */
+		if (!connect_failed)
+			log_info("privsep", "cannot connect to %s: %s",
+			    addr->sun_path, strerror(errno));
+		else
+			log_debug("privsep", "cannot connect to %s: %s",
+			    addr->sun_path, strerror(errno));
+		connect_failed = 1;
 		close(sock);
 		rc = -1;
 		must_write(PRIV_PRIVILEGED, &rc, sizeof(int));
@@ -377,6 +385,7 @@ asroot_snmp_socket()
 		return;
 	}
 
+	connect_failed = 0;
 	must_write(PRIV_PRIVILEGED, &rc, sizeof(int));
 	send_fd(PRIV_PRIVILEGED, sock);
 	close(sock);
